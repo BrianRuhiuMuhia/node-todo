@@ -1,0 +1,10 @@
+const express=require("express")
+const router=express.Router()
+const {getAllTasks,getSingleTask,addTask,deleteTask,updateTask, limitGetAllTasks}=require("../controllers/controller.js")
+router.get("/tasks",getAllTasks)
+router.get("/task/:id",getSingleTask)
+router.post("/task",addTask)
+router.delete("/task/:id",deleteTask)
+router.patch("/task/:id",updateTask)
+router.get('/taskslimit',limitGetAllTasks)
+module.exports={router}
