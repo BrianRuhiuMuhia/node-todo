@@ -218,7 +218,11 @@ else{
     const expires=Date.now() + 3600000;
     const tokenId=uuid()
     await db.query("insert into tokens(user_id,token,expires,token_id)",[userId,token,expires,tokenId])
-    //send email
+  const emailOptions={
+    email:email,
+    text:`reset token will expire in 1 hour,reset token:http://localhost:5000/api/resetpassword?token=${token}`
+  }
+      sendEmail(emailOptions)
     return res.json({"mssg":"password reset link sent to your email"})
 }
     
