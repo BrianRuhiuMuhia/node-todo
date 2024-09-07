@@ -1,4 +1,7 @@
 const db=require("../db/db.js")
+const bcrypt = require('bcrypt');
+const uuid=require("uuid")
+const jwt=require("jsonwebtoken")
 async function getAllTasks(req,res)
 {
 try{
@@ -107,4 +110,110 @@ catch(err)
 }
 return res.json({"mssg":"server error"})
 }
-module.exports={getSingleTask,getAllTasks,addTask,deleteTask,updateTask,limitGetAllTasks}
+async function register(req,res)
+{
+const {f_name,l_name,email,password}=req.body
+const id=uuid()
+if(!f_name||!l_name||!email||!password)
+{
+    return res.json({"mssg":"server error"})
+}
+try{
+const result=await db.query("select * from users where email = $1",[email])
+if(result.rows[0])
+{
+    return res.json({"mssg":"user arleady registered"})
+}
+else{
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+    await db.query("insert into users(id,f_name,l_name,email,password) values($1,$2,$3,$4)",[id,f_name,l_name,email,hashedPassword])
+    return res.json({"mssg":"user registered"})
+}
+}
+catch(err)
+{
+console.log(err)
+return res.json({"mssg":"server error"})
+}
+}
+async function login(req,res)
+{
+    const {email,password}=req.body
+    try{
+const result =await db.query("select * from users where email = $1",[email])
+if(!result.rows[0])
+{
+    return res.json({"mssg":"user not found"})
+}
+else{
+    const user=result.rows[0]
+    const hashedPassword=user.password
+    bcrypt.compare(password, hashedPassword).then(function(result) {
+        if(result===true)
+        {
+            const token = jwt.sign(user, process.env.SECRET_KEY);
+            req.session.user={...user,token}
+            return res.json({"mssg":"logged in"})
+        }
+        else{
+            return res.json({"mssg":"wrong password"})
+        }
+    });
+}
+    }
+    catch(err)
+    {
+        console.log(err)
+        return res.json({"mssg":"server error"})
+    }
+}
+async function getAllUsers(req,res){
+    console.log("Hello World")
+    try{
+const result=await db.query("select * from users")
+if(!result.rows)
+{
+    return res.json({"mssg":"no users found"})
+}
+else{
+    return res.json(result.rows)
+}
+    }
+    catch(err)
+    {
+        console.log(err)
+        return res.json({"mssg":"server error"})
+    }
+
+}
+async function getOneUser(req,res)
+{
+    const {email}=req.body
+try{
+const result =await db.query("select * from users where email=$1",[email])
+if(!result.rows[0])
+{
+    return res.json({"mssg":`No User With Email ${email}`})
+}
+else{
+    return res.json(result.rows[0])
+}
+}
+catch(err)
+{
+    console.log(err)
+    return res.json({"mssg":"server error"})
+}
+}
+async function deleteUser(){}
+async function getSingleUser(){}
+async function updateUser(){}
+async function getUserProfile(){}
+async function forgotpassword(){}
+async function resetPassword(){}
+async function unsupportedRoutes(req,res)
+{
+    return res.json({"mssg":"route not supported"})
+}
+module.exports={getSingleTask,getAllTasks,addTask,deleteTask,updateTask,limitGetAllTasks,register,login,getAllUsers,getOneUser,unsupportedRoutes,deleteUser,getSingleUser}
