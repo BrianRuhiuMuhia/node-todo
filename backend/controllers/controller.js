@@ -206,14 +206,62 @@ catch(err)
     return res.json({"mssg":"server error"})
 }
 }
-async function deleteUser(){}
-async function getSingleUser(){}
-async function updateUser(){}
-async function getUserProfile(){}
-async function forgotpassword(){}
-async function resetPassword(){}
+async function forgotPassword(){
+    const {email}=req.body
+    try{
+const result=await db.query("select * from users where email=$1",[email])
+if(!result.rows[0])
+    return res.json({"mssg":`No User With Email ${email}`})
+else{
+    const token=generateToken(result.rows[0].id)
+    const userId=result.rows[0].id
+    const expires=Date.now() + 3600000;
+    const tokenId=uuid()
+    await db.query("insert into tokens(user_id,token,expires,token_id)",[userId,token,expires,tokenId])
+    //send email
+    return res.json({"mssg":"password reset link sent to your email"})
+}
+    
+}
+    catch(err)
+    {
+return res.json({"mssg":"server error"})
+    }
+}
+async function resetPassword(req,res){
+    const {token}=req.query
+    try{
+const results=await db.query("SELECT *FROM tokens ORDER BY expires DESC LIMIT 1;")
+if(!result.rows[0])
+    return res.json({"mssg":"server error"})
+else{
+    const tokenRecord=result.rows[0]
+    const expires=tokenRecord["expires"]
+    if(now()>expires)
+    {
+        return res.json({"mssg":"reset token expired"})
+    }
+const user=await db.query("select * from users where id=$1",[tokenRecord["user_id"]])
+if(!user.rows[0])
+{
+    return res.json({"mssg":"server error"})
+}
+else{
+    const {password}=req.body
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+    await db.query("UPDATE users SET user_password=$1,WHERE id=$2 ",[hashedPassword,user.id])
+    return res.json({"mssg":"password changed"})
+}
+}
+    }
+    catch(err)
+    {
+
+    }
+}
 async function unsupportedRoutes(req,res)
 {
     return res.json({"mssg":"route not supported"})
 }
-module.exports={getSingleTask,getAllTasks,addTask,deleteTask,updateTask,limitGetAllTasks,register,login,getAllUsers,getOneUser,unsupportedRoutes,deleteUser,getSingleUser}
+module.exports={getSingleTask,getAllTasks,addTask,deleteTask,updateTask,limitGetAllTasks,register,login,getAllUsers,getOneUser,unsupportedRoutes,forgotPassword,resetPassword}
